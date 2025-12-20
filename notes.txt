@@ -1,0 +1,21 @@
+12 desember 2025
+- setup sveltekit ✅
+- setup effect ✅
+- setup migration ✅
+- setup shadcn-svelte ✅
+
+13 desember 2025
+- schema ✅
+- login,register page ✅
+
+19 desember 2025
+- base service type ✅
+- user service ✅
+- user service layer (live impl) ✅
+
+-- TODO
+- managed runtime
+- setup seed
+- hooks (middleware)
+
+- fix neovim prettier format in this project
