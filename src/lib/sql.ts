@@ -1,5 +1,5 @@
-import { LibsqlClient } from '@effect/sql-libsql';
+import { SqliteClient } from "@effect/sql-sqlite-node"
 
-export const SqlLive = LibsqlClient.layer({
-	url: 'file:data.db'
-});
+export const SqlLive = SqliteClient.layer({
+    filename: 'data.db'
+})

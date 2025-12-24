@@ -13,9 +13,14 @@
 - user service ✅
 - user service layer (live impl) ✅
 
+24 desember 2025
+- argon
+- store service
+
 -- TODO
 - managed runtime
 - setup seed
 - hooks (middleware)
 
-- fix neovim prettier format in this project
+
+

@@ -2,37 +2,41 @@ import { SqlClient } from '@effect/sql';
 import { Effect } from 'effect';
 
 export const migrations = {
-	'001_initial': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`
+    '001_initial': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => Effect.all([
+            sql`
             PRAGMA journal_mode=WAL;
-            PRAGRAM foreign_keys=ON;
+        `,
+            sql`
+            PRAGMA foreign_keys=ON;
         `
-	),
-	// store category
-	'002_create_store_category_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS store_categories (
+        ])
+    ),
+    // store category
+    '002_create_store_category_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS store_categories (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
             label TEXT
         )`
-	),
-	// store type
-	'003_create_store_type_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS store_types (
+    ),
+    // store type
+    '003_create_store_type_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS store_types (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
             label TEXT
         )`
-	),
-	// store
-	'004_create_store_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS stores (
+    ),
+    // store
+    '004_create_store_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS stores (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -47,11 +51,11 @@ export const migrations = {
             FOREIGN KEY (store_category) REFERENCES store_categories(id)
             
         )`
-	),
-	// auth
-	'005_create_auth_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS auths (
+    ),
+    // auth
+    '005_create_auth_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS auths (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -64,11 +68,11 @@ export const migrations = {
 
             FOREIGN KEY (user) REFERENCES users(id)
         )`
-	),
-	// user
-	'006_create_user_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS users (
+    ),
+    // user
+    '006_create_user_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -85,11 +89,11 @@ export const migrations = {
 
             FOREIGN KEY (store) REFERENCES stores(id)
         )`
-	),
-	// otp??
-	'007_create_otp_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS otps (
+    ),
+    // otp??
+    '007_create_otp_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS otps (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -101,11 +105,11 @@ export const migrations = {
 
             FOREIGN KEY (user) REFERENCES users(id)
         )`
-	),
-	// product brand
-	'008_create_product_brand_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS product_brands (
+    ),
+    // product brand
+    '008_create_product_brand_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS product_brands (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -116,10 +120,10 @@ export const migrations = {
 
             FOREIGN KEY (store) REFERENCES stores(id)
         )`
-	),
-	'009_create_product_category_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS product_categories (
+    ),
+    '009_create_product_category_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS product_categories (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -130,11 +134,11 @@ export const migrations = {
 
             FOREIGN KEY (store) REFERENCES stores(id)
         )`
-	),
-	// product
-	'010_create_product_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS products (
+    ),
+    // product
+    '010_create_product_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS products (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -150,11 +154,11 @@ export const migrations = {
             FOREIGN KEY (brand) REFERENCES product_brands(id),
             FOREIGN KEY (category) REFERENCES product_categories(id)
         )`
-	),
-	// product variant
-	'011_create_product_variant_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS product_variants (
+    ),
+    // product variant
+    '011_create_product_variant_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS product_variants (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -170,11 +174,11 @@ export const migrations = {
             FOREIGN KEY (product) REFERENCES products(id),
             FOREIGN KEY (store) REFERENCES stores(id)
         )`
-	),
-	// product stock unit
-	'012_create_product_stock_unit_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS product_stock_units (
+    ),
+    // product stock unit
+    '012_create_product_stock_unit_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS product_stock_units (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -186,11 +190,11 @@ export const migrations = {
             FOREIGN KEY (store) REFERENCES stores(id)
 
         )`
-	),
-	// product stock
-	'013_create_product_stock_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS product_stocks (
+    ),
+    // product stock
+    '013_create_product_stock_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS product_stocks (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -208,21 +212,21 @@ export const migrations = {
             FOREIGN KEY (unit) REFERENCES product_stock_units(id),
             FOREIGN KEY (product_variant) REFERENCES product_variants(id)
         )`
-	),
-	// payment method
-	'014_create_payment_method_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS payment_methods (
+    ),
+    // payment method
+    '014_create_payment_method_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS payment_methods (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
             label TEXT DEFAULT ''
         )`
-	),
-	// transaction
-	'015_create_transaction_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS transactions (
+    ),
+    // transaction
+    '015_create_transaction_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -240,11 +244,11 @@ export const migrations = {
             FOREIGN KEY (user) REFERENCES users(id),
             FOREIGN KEY (payment_method) REFERENCES payment_methods(id)
         )`
-	),
-	// transaction item
-	'016_create_transaction_item_table': Effect.flatMap(
-		SqlClient.SqlClient,
-		(sql) => sql`CREATE TABLE IF NOT EXISTS transaction_items (
+    ),
+    // transaction item
+    '016_create_transaction_item_table': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`CREATE TABLE IF NOT EXISTS transaction_items (
             id TEXT PRIMARY KEY,
             created DATETIME DEFAULT (datetime('now')),
             updated DATETIME DEFAULT (datetime('now')),
@@ -269,5 +273,5 @@ export const migrations = {
             FOREIGN KEY ('transaction') REFERENCES transactions(id),
             FOREIGN KEY (product) REFERENCES product(id)
         )`
-	)
+    )
 };

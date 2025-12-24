@@ -36,14 +36,14 @@
 				<Field data-invalid={!!emailField.issues()}>
 					<FieldLabel for="email">Email</FieldLabel>
 					<Input placeholder="m@example.com" {...emailField.as('email')} />
-					{#each emailField.issues() as e, i (i)}
+					{#each emailField.issues() ?? [] as e, i (i)}
 						<FieldError>{e.message}</FieldError>
 					{/each}
 				</Field>
 				<Field data-invalid={!!nameField.issues()}>
 					<FieldLabel for="name">Name</FieldLabel>
 					<Input placeholder="Enter your name" {...nameField.as('text')} />
-					{#each nameField.issues() as e, i (i)}
+					{#each nameField.issues() ?? [] as e, i (i)}
 						<FieldError>{e.message}</FieldError>
 					{/each}
 				</Field>
@@ -52,7 +52,7 @@
 						<FieldLabel for="password">Password</FieldLabel>
 					</div>
 					<Input {...passwordField.as('password')} placeholder="Enter your password" />
-					{#each passwordField.issues() as e, i (i)}
+					{#each passwordField.issues() ?? [] as e, i (i)}
 						<FieldError>{e.message}</FieldError>
 					{/each}
 				</Field>
@@ -61,7 +61,7 @@
 						<FieldLabel for="confirm_password">Confirm Password</FieldLabel>
 					</div>
 					<Input {...confirmPasswordField.as('password')} placeholder="Confirm your password" />
-					{#each confirmPasswordField.issues() as e, i (i)}
+					{#each confirmPasswordField.issues() ?? [] as e, i (i)}
 						<FieldError>{e.message}</FieldError>
 					{/each}
 				</Field>
