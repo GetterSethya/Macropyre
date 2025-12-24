@@ -267,11 +267,13 @@ class Service extends Context.Tag('macropyre/lib/service/user/Service')<
 							`
                         })().pipe(
                             Effect.catchAll(
-                                (error) =>
-                                    new ServiceUnknownError({
+                                (error) => {
+                                    console.error(error)
+                                    return new ServiceUnknownError({
                                         message: 'Failed creating new record',
                                         originalError: error
                                     })
+                                }
                             )
                         );
 

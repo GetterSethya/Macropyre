@@ -1,6 +1,11 @@
 import { SqlClient } from '@effect/sql';
 import { Effect } from 'effect';
 
+// seed
+// store_category
+// store_type
+// store
+
 export const migrations = {
     '001_initial': Effect.flatMap(
         SqlClient.SqlClient,
@@ -273,5 +278,45 @@ export const migrations = {
             FOREIGN KEY ('transaction') REFERENCES transactions(id),
             FOREIGN KEY (product) REFERENCES product(id)
         )`
+    ),
+    '017_seed_store_categories': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`
+            INSERT INTO store_categories (id, label) VALUES 
+            ('cat_retail', 'Retail'),
+            ('cat_fnb', 'Food & Beverage'),
+            ('cat_service', 'Service'),
+            ('cat_other', 'Other')
+            ON CONFLICT(id) DO NOTHING;
+        `
+    ),
+    '018_seed_store_types': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`
+            INSERT INTO store_types (id, label) VALUES 
+            ('type_physical', 'Physical Store'),
+            ('type_online', 'Online Store'),
+            ('type_warehouse', 'Warehouse')
+            ON CONFLICT(id) DO NOTHING;
+        `
+    ),
+    '019_seed_initial_store': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`
+            INSERT INTO stores (id, name, address, store_type, store_category) VALUES 
+            ('default_store', 'Main Store', '123 Business Rd', 'type_physical', 'cat_retail')
+            ON CONFLICT(id) DO NOTHING;
+        `
+    ),
+    '020_seed_payment_methods': Effect.flatMap(
+        SqlClient.SqlClient,
+        (sql) => sql`
+            INSERT INTO payment_methods (id, label) VALUES 
+            ('pay_cash', 'Cash'),
+            ('pay_debit', 'Debit Card'),
+            ('pay_credit', 'Credit Card'),
+            ('pay_ewallet', 'E-Wallet')
+            ON CONFLICT(id) DO NOTHING;
+        `
     )
 };
