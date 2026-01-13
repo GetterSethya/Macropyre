@@ -1,7 +1,8 @@
 import { Context, Effect, Layer, Schema } from 'effect';
 import {
-    ServiceNotFoundError,
-    ServiceUnknownError,
+	ServiceNotFoundError,
+	ServicePayloadError,
+	ServiceUnknownError,
 	type CreateArgs,
 	type ListAllArgs,
 	type ListArgs,
@@ -9,22 +10,27 @@ import {
 	type UpdateArgs,
 	type ViewArgs
 } from './baseService';
-import { SqlClient, SqlSchema } from '@effect/sql';
+import { SqlSchema } from '@effect/sql';
+import { SqlClient } from '@effect/sql/SqlClient';
 import { SqlLive } from '$lib/sql';
 
 const ServiceSchema = Schema.Struct({
 	id: Schema.String,
 	created: Schema.Date.pipe(Schema.validDate()),
 	updated: Schema.Date.pipe(Schema.validDate()),
-	name: Schema.String.pipe(Schema.nonEmptyString()),
-	address: Schema.String,
-	store_type: Schema.String.pipe(Schema.nonEmptyString()),
-	store_category: Schema.String.pipe(Schema.nonEmptyString())
+	verified: Schema.Union(Schema.String, Schema.Date.pipe(Schema.validDate())),
+	email: Schema.String,
+	name: Schema.String,
+	role: Schema.Literal('owner', 'staff'),
+	complete_onboarding: Schema.Union(Schema.String, Schema.Date.pipe(Schema.validDate())),
+	hash_password: Schema.String.pipe(Schema.nonEmptyString()),
+	last_login: Schema.Union(Schema.String, Schema.Date.pipe(Schema.validDate())),
+	store: Schema.String
 });
 
 type ServiceSchemaType = typeof ServiceSchema.Type;
 
-class Service extends Context.Tag('macropyre/lib/service/store/Service')<
+class Service extends Context.Tag('macropyre/lib/service/user/Service')<
 	Service,
 	{
 		create: (
@@ -51,10 +57,22 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 			ReadonlyArray<Omit<ServiceSchemaType, 'hash_password'>>,
 			ServiceUnknownError
 		>;
+		viewHash: (
+			args: ViewArgs
+		) => Effect.Effect<
+			ServiceSchemaType['hash_password'],
+			ServiceNotFoundError | ServiceUnknownError
+		>;
+		updateHash: (
+			args: UpdateArgs<{ hash_password: ServiceSchemaType['hash_password'] }>
+		) => Effect.Effect<
+			ServiceSchemaType['hash_password'],
+			ServiceNotFoundError | ServiceUnknownError | ServicePayloadError
+		>;
 	}
 >() {
 	public static tableName() {
-		return 'stores';
+		return 'users';
 	}
 
 	public static layer() {
@@ -62,13 +80,87 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 			Service,
 			Effect.gen(this, function* () {
 				const tableName = this.tableName();
-				const sql = yield* SqlClient.SqlClient;
+				const sql = yield* SqlClient;
 
 				return Service.of({
+					viewHash: Effect.fn(function* (args) {
+						const result = yield* SqlSchema.single({
+							Request: Schema.String,
+							Result: ServiceSchema.pick('hash_password'),
+							execute: (id) => sql`SELECT hash_password FROM ${sql(tableName)} WHERE id=${id}`
+						})(args.id).pipe(
+							//
+							Effect.catchTags({
+								NoSuchElementException: (error) =>
+									new ServiceNotFoundError({
+										message: `Record with id ${args.id} did not exists`,
+										originalError: error
+									}),
+								ParseError: (error) =>
+									new ServiceUnknownError({
+										message: 'Failed parsing sql',
+										originalError: error
+									}),
+								SqlError: (error) =>
+									new ServiceUnknownError({
+										message: 'Failed parsing sql',
+										originalError: error
+									})
+							})
+						);
+
+						return result.hash_password;
+					}),
+
+					updateHash: Effect.fn(function* (args) {
+						if (!args.item.hash_password) {
+							return yield* Effect.fail(
+								new ServicePayloadError({
+									message: 'Invalid payload',
+									originalError: undefined
+								})
+							);
+						}
+
+						const updatedHash = yield* SqlSchema.single({
+							Request: Schema.Struct({
+								id: Schema.String,
+								hash_password: Schema.String
+							}),
+							Result: Schema.String,
+							execute: ({ id, hash_password }) => sql`
+							UPDATE ${sql(tableName)} SET hash_password = ${hash_password}
+							WHERE id = ${id}
+							RETURNING hash_password
+							`
+						})({ hash_password: args.item.hash_password, id: args.id }).pipe(
+							//
+							Effect.catchTags({
+								NoSuchElementException: (error) =>
+									new ServiceNotFoundError({
+										message: `Record with id ${args.id} did not exists`,
+										originalError: error
+									}),
+								ParseError: (error) =>
+									new ServiceUnknownError({
+										message: 'Failed parsing sql',
+										originalError: error
+									}),
+								SqlError: (error) =>
+									new ServiceUnknownError({
+										message: 'Failed parsing sql',
+										originalError: error
+									})
+							})
+						);
+
+						return updatedHash;
+					}),
+
 					listAll: Effect.fn(function* (args) {
 						const result = yield* SqlSchema.findAll({
 							Request: Schema.Void,
-							Result: ServiceSchema,
+							Result: ServiceSchema.omit('hash_password'),
 							execute: () =>
 								sql`
 								SELECT *
@@ -91,7 +183,7 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 
 						const results = yield* SqlSchema.findAll({
 							Request: Schema.Void,
-							Result: ServiceSchema,
+							Result: ServiceSchema.omit('hash_password'),
 							execute: () =>
 								sql`
 							SELECT *
@@ -142,7 +234,7 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 					view: Effect.fn(function* (args) {
 						const result = yield* SqlSchema.single({
 							Request: Schema.String,
-							Result: ServiceSchema,
+							Result: ServiceSchema.omit('hash_password'),
 							execute: (id) => sql`SELECT * FROM ${sql(tableName)} WHERE id=${id}`
 						})(args.id).pipe(
 							Effect.catchTags({
@@ -188,7 +280,7 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 					update: Effect.fn(function* (args) {
 						const oldRecord = yield* SqlSchema.single({
 							Request: Schema.String,
-							Result: ServiceSchema,
+							Result: ServiceSchema.omit('hash_password'),
 							execute: (id) => sql`SELECT * FROM ${sql(tableName)} WHERE id=${id}`
 						})(args.id).pipe(
 							Effect.catchTags({
@@ -217,13 +309,13 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 						};
 
 						const updatedRecord = yield* SqlSchema.single({
-							Request: Schema.Void,
-							Result: ServiceSchema,
-							execute: () => sql`
+							Request: ServiceSchema.omit('hash_password'),
+							Result: ServiceSchema.omit('hash_password'),
+							execute: (data) => sql`
 						UPDATE ${sql(tableName)}
-						SET ${sql.update(merged, ['id'])}
+						SET ${sql.update(data, ['id'])}
 						WHERE id = ${args.id} RETURNING *`
-						})().pipe(
+						})(merged).pipe(
 							//
 							Effect.catchTags({
 								NoSuchElementException: (error) =>
@@ -233,12 +325,12 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 									}),
 								ParseError: (error) =>
 									new ServiceUnknownError({
-										message: 'Failed parsing sql',
+										message: 'update user record: Failed parsing sql',
 										originalError: error
 									}),
 								SqlError: (error) =>
 									new ServiceUnknownError({
-										message: 'Failed parsing sql',
+										message: 'update user record: Failed parsing sql',
 										originalError: error
 									})
 							})
@@ -252,6 +344,6 @@ class Service extends Context.Tag('macropyre/lib/service/store/Service')<
 	}
 }
 
-export const Store = { Service, ServiceSchema };
+export const User = { Service, ServiceSchema };
 
 export type { ServiceSchemaType };

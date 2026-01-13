@@ -14,11 +14,13 @@
 - user service layer (live impl) ✅
 
 24 desember 2025
-- argon
+- argon ✅
 
-- store service
+13 januari 2026
+- store service ✅
 
 -- TODO
+- fix store update, use Request Schema in SqlSchema
 - managed runtime
 - setup seed
 - hooks (middleware)
