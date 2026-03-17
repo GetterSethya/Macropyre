@@ -1,255 +1,48 @@
-import { Context, Effect, Layer, Schema } from 'effect';
+import { Context, Layer, Schema } from 'effect';
 import {
-    ServiceNotFoundError,
-    ServiceUnknownError,
-	type CreateArgs,
-	type ListAllArgs,
-	type ListArgs,
-	type ListResponse,
-	type UpdateArgs,
-	type ViewArgs
+    BaseModel,
+    BaseSchema,
+    type MethodsOnly,
 } from './baseService';
-import { SqlClient, SqlSchema } from '@effect/sql';
-import { SqlLive } from '$lib/sql';
 
 const ServiceSchema = Schema.Struct({
-	id: Schema.String,
-	created: Schema.Date.pipe(Schema.validDate()),
-	updated: Schema.Date.pipe(Schema.validDate()),
-	name: Schema.String.pipe(Schema.nonEmptyString()),
-	address: Schema.String,
-	store_type: Schema.String.pipe(Schema.nonEmptyString()),
-	store_category: Schema.String.pipe(Schema.nonEmptyString())
+    ...BaseSchema.fields,
+    name: Schema.String.pipe(Schema.nonEmptyString()),
+    address: Schema.String,
+    store_type: Schema.String.pipe(Schema.nonEmptyString()),
+    store_category: Schema.String.pipe(Schema.nonEmptyString())
 });
 
 type ServiceSchemaType = typeof ServiceSchema.Type;
+type ServiceSchemaEncoded = typeof ServiceSchema.Encoded
+
+class Model extends BaseModel<ServiceSchemaType, ServiceSchemaEncoded> {
+    tableName = () => "stores";
+    schema = () => ServiceSchema
+}
 
 class Service extends Context.Tag('macropyre/lib/service/store/Service')<
-	Service,
-	{
-		create: (
-			args: CreateArgs<ServiceSchemaType>
-		) => Effect.Effect<ServiceSchemaType, ServiceUnknownError>;
-		update: (
-			args: UpdateArgs<Omit<ServiceSchemaType, 'hash_password'>>
-		) => Effect.Effect<
-			Omit<ServiceSchemaType, 'hash_password'>,
-			ServiceNotFoundError | ServiceUnknownError
-		>;
-		view: (
-			args: ViewArgs
-		) => Effect.Effect<
-			Omit<ServiceSchemaType, 'hash_password'>,
-			ServiceNotFoundError | ServiceUnknownError
-		>;
-		list: (
-			args: ListArgs
-		) => Effect.Effect<ListResponse<Omit<ServiceSchemaType, 'hash_password'>>, ServiceUnknownError>;
-		listAll: (
-			args: ListAllArgs
-		) => Effect.Effect<
-			ReadonlyArray<Omit<ServiceSchemaType, 'hash_password'>>,
-			ServiceUnknownError
-		>;
-	}
+    Service,
+    MethodsOnly<Model>
 >() {
-	public static tableName() {
-		return 'stores';
-	}
 
-	public static layer() {
-		return Layer.effect(
-			Service,
-			Effect.gen(this, function* () {
-				const tableName = this.tableName();
-				const sql = yield* SqlClient.SqlClient;
+    public static model = new Model()
 
-				return Service.of({
-					listAll: Effect.fn(function* (args) {
-						const result = yield* SqlSchema.findAll({
-							Request: Schema.Void,
-							Result: ServiceSchema,
-							execute: () =>
-								sql`
-								SELECT *
-								FROM ${sql(tableName)}
-								${args.options?.filter && sql(`WHERE ${args.options.filter}`)}`
-						})().pipe(
-							Effect.catchAll(
-								(error) =>
-									new ServiceUnknownError({
-										message: 'error while performing listAll',
-										originalError: error
-									})
-							)
-						);
-
-						return result;
-					}),
-					list: Effect.fn(function* (args) {
-						const offset = (args.page - 1) * args.perPage;
-
-						const results = yield* SqlSchema.findAll({
-							Request: Schema.Void,
-							Result: ServiceSchema,
-							execute: () =>
-								sql`
-							SELECT *
-							FROM ${sql(tableName)}
-							${args.options?.filter && sql(`WHERE ${args.options.filter}`)}
-							ORDER BY created DESC
-							LIMIT ${sql(args.perPage.toString())}
-							OFFSET ${sql(offset.toString())}
-							`
-						})().pipe(
-							Effect.catchAll(
-								(error) =>
-									new ServiceUnknownError({
-										message: 'error while performing listAll',
-										originalError: error
-									})
-							)
-						);
-
-						const countResult = yield* sql<{ count: number }>`
-						SELECT COUNT(*) AS count
-						FROM ${sql(tableName)}
-						${args.options?.filter && sql(`WHERE ${args.options.filter}`)}
-						`.pipe(
-							//
-							Effect.map((result) => {
-								return result.at(0) ?? { count: 0 };
-							}),
-							Effect.catchTag(
-								'SqlError',
-								(error) =>
-									new ServiceUnknownError({
-										message: 'error counting record',
-										originalError: error
-									})
-							)
-						);
-
-						return {
-							page: args.page,
-							perPage: args.perPage,
-							records: results,
-							totalItems: countResult.count,
-							totalPages: Math.ceil(countResult.count / args.perPage)
-						};
-					}),
-
-					view: Effect.fn(function* (args) {
-						const result = yield* SqlSchema.single({
-							Request: Schema.String,
-							Result: ServiceSchema,
-							execute: (id) => sql`SELECT * FROM ${sql(tableName)} WHERE id=${id}`
-						})(args.id).pipe(
-							Effect.catchTags({
-								NoSuchElementException: (error) =>
-									new ServiceNotFoundError({
-										message: `Record with id ${args.id} does not exists`,
-										originalError: error
-									}),
-								ParseError: (error) =>
-									new ServiceUnknownError({
-										message: 'Failed parsing sql',
-										originalError: error
-									}),
-								SqlError: (error) =>
-									new ServiceUnknownError({
-										message: 'Failed parsing sql',
-										originalError: error
-									})
-							})
-						);
-
-						return result;
-					}),
-					create: Effect.fn(function* (args) {
-						const result = yield* SqlSchema.single({
-							Request: Schema.Void,
-							Result: ServiceSchema,
-							execute: () => sql`
-							  INSERT INTO ${sql(tableName)} ${sql.insert(args.item)} RETURNING *
-							`
-						})().pipe(
-							Effect.catchAll((error) => {
-								console.error(error);
-								return new ServiceUnknownError({
-									message: 'Failed creating new record',
-									originalError: error
-								});
-							})
-						);
-
-						return result;
-					}),
-					update: Effect.fn(function* (args) {
-						const oldRecord = yield* SqlSchema.single({
-							Request: Schema.String,
-							Result: ServiceSchema,
-							execute: (id) => sql`SELECT * FROM ${sql(tableName)} WHERE id=${id}`
-						})(args.id).pipe(
-							Effect.catchTags({
-								NoSuchElementException: (error) =>
-									new ServiceNotFoundError({
-										message: `Record with id ${args.id} does not exists`,
-										originalError: error
-									}),
-								ParseError: (error) =>
-									new ServiceUnknownError({
-										message: 'Failed parsing sql',
-										originalError: error
-									}),
-								SqlError: (error) =>
-									new ServiceUnknownError({
-										message: 'Failed parsing sql',
-										originalError: error
-									})
-							})
-						);
-
-						const merged = {
-							...oldRecord,
-							updated: new Date(),
-							...args.item
-						};
-
-						const updatedRecord = yield* SqlSchema.single({
-							Request: Schema.Void,
-							Result: ServiceSchema,
-							execute: () => sql`
-						UPDATE ${sql(tableName)}
-						SET ${sql.update(merged, ['id'])}
-						WHERE id = ${args.id} RETURNING *`
-						})().pipe(
-							//
-							Effect.catchTags({
-								NoSuchElementException: (error) =>
-									new ServiceNotFoundError({
-										message: `Record with id ${args.id} does not exists`,
-										originalError: error
-									}),
-								ParseError: (error) =>
-									new ServiceUnknownError({
-										message: 'Failed parsing sql',
-										originalError: error
-									}),
-								SqlError: (error) =>
-									new ServiceUnknownError({
-										message: 'Failed parsing sql',
-										originalError: error
-									})
-							})
-						);
-
-						return updatedRecord;
-					})
-				});
-			})
-		).pipe(Layer.provide(SqlLive));
-	}
+    public static layer() {
+        return Layer.succeed(
+            Service,
+            Service.of({
+                schema: this.model.schema,
+                update: this.model.update,
+                listAll: this.model.listAll,
+                list: this.model.list,
+                view: this.model.view,
+                delete: this.model.delete,
+                tableName: this.model.tableName,
+                create: this.model.create,
+            })
+        );
+    }
 }
 
 export const Store = { Service, ServiceSchema };

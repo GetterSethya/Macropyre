@@ -19,6 +19,9 @@
 13 januari 2026
 - store service ✅
 
+17 maret 2026
+- refactor service
+
 -- TODO
 - fix store update, use Request Schema in SqlSchema
 - managed runtime
